@@ -10,7 +10,7 @@ from typing import TypeVar
 T = TypeVar("T")
 
 
-class _ValidatorDescriptor(ABC, Generic[T]):
+class _ValidatorDescriptor(Generic[T], ABC):
     __slots__ = ("name",)
 
     def __init__(self) -> None:
@@ -31,30 +31,20 @@ class _ValidatorDescriptor(ABC, Generic[T]):
         raise NotImplementedError()
 
 
-class DirectoryPath(_ValidatorDescriptor):
-    __slots__ = ("create",)
+class DirectoryPath(_ValidatorDescriptor[str]):
+    __slots__ = ("name", "create",)
 
     def __init__(self, create: bool = False) -> None:
         super().__init__()
         self.create: bool = create
-
-    def __set_name__(self, owner, name: str) -> None:
-        self.name: str = f"_{name}"
-
-    def __get__(self, obj, obj_type: None) -> str:
-        return getattr(obj, self.name)
-
-    def __set__(self, obj, value: str) -> None:
-        self.validate(value)
-        setattr(obj, self.name, value)
 
     def validate(self, path: str) -> None:
         if not isinstance(path, str):
             raise ValueError()
         if isfile(path):
             raise FileExistsError()
-        if not exists(path) and self.create is False:
-            raise FileNotFoundError()
-        if not isdir(path) and self.create is False:
-            raise FileNotFoundError()
-        mkdir(path)
+        if not exists(path) and not isdir(path):
+            if self.create is False:
+                raise FileNotFoundError()
+            if self.create is True:
+                mkdir(path)
